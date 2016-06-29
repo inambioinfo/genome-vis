@@ -1,96 +1,460 @@
 ---
-title: "Visualising NGS data with ggplot and ggbio"
+title: "Visualising NGS data with R and Bioconductor"
 author: "Mark Dunning"
 date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
 output: html_document
 ---
 
-## More-advanced graphics in R
+# Graphics in R
 
-- Base graphics in R use a canvas model
-    + series of instructions that sequentially fill the plotting canvas
+The R language has extensive graphical capabilities.
+
+Graphics in R may be created by many different methods including base graphics and more advanced plotting packages such as lattice.
+
+<div id="buildingblocks" align="center">
+  <img src="images/plotsinR.jpg" alt="">
+</div>  
+
+The ggplot2 package was created by Hadley Wickham and provides a intuitive plotting system to rapidly generate publication quality graphics.
+
+ggplot2 builds on the concept of the "Grammar of Graphics" (Wilkinson 2005, Bertin 1983) which describes a consistent syntax for the construction of a wide range of complex graphics by a concise description of their components.
+
+
+# Why use ggplot2
+
+The structured syntax and high level of abstraction used by ggplot2 should allow for the user to concentrate on the visualisations instead of creating the underlying code.
+
+On top of this central philosophy ggplot2 has:
+
+- Increased flexible over many plotting systems.
+- An advanced theme system for professional/publication level graphics.
+- Large developer base -- Many libraries extending its flexibility.
+- Large user base -- Great documentation and active mailing list.
+
+
+# Grammar of Graphics
+
+## How to build a plot from its components.
+
+<div id="buildingblocks" align="center">
+  <img src="presentation1/Slide1.jpg" alt="">
+</div>  
+
+
+## How ggplot2 builds a plot.
+
+<div id="buildingblocks" align="center">
+  <img src="presentation1/Slide2.jpg" alt="">
+</div>  
+
+Overview of example code for the ggplot2 scatter plot.
+
+```{r complex,eval=F}
+
+ggplot(data = <default data set>, 
+       aes(x = <default x axis variable>,
+           y = <default y axis variable>,
+           ... <other default aesthetic mappings>),
+       ... <other plot defaults>) +
+
+       geom_scatter(aes(size = <size variable for this geom>, 
+                      ... <other aesthetic mappings>),
+                  data = <data for this point geom>,
+                  stat = <statistic string or function>,
+                  position = <position string or function>,
+                  color = <"fixed color specification">,
+                  <other arguments, possibly passed to the _stat_ function) +
+
+  scale_<aesthetic>_<type>(name = <"scale label">,
+                     breaks = <where to put tick marks>,
+                     labels = <labels for tick marks>,
+                     ... <other options for the scale>) +
+  
+  ggtitle("Graphics/Plot")+
+  xlab("Weight")+
+  ylab("Height")+
+
+  theme(plot.title = element_text(colour = "gray"),
+        ... <other theme elements>)
     
-- ggplot2 employs a `grammar of graphics approach`
-- The components are
-    + a dataset
-    + geometric object that is visual representation of the data
-        + e.g. points, lines, etc
-    + mapping of variables to visual properties of plot
-        + ***aesthetics***
-    + (statistical summarisation rule)
-    + (coordinate system)
-    + (facet specification)
-
-## ggplot2 overview
-ggplot2 [cheat-sheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf)
-
-![cheatsheet](images/ggplot2-csheat.png)
-
-## Plot Comparison
-
-```{r fig.height=3}
-x <- 1:10
-y <- 2*x
-plot(x,y)
 ```
 
-```{r fig.height=3}
+## What users are required to specify in ggplot2 to build a plot.
+
+<div id="buildingblocks" align="center">
+  <img src="presentation1/Slide3.jpg" alt="">
+</div>  
+
+
+# Getting started with ggplot2
+
+
+
+```{r load_packages, echo=FALSE, eval=TRUE,warning=F,message=F}
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(lubridate))
+```
+
+
+```{r present_clean}
 library(ggplot2)
-df <-data.frame(x,y)
-ggplot(df, aes(x=x,y=y)) + geom_point()
+library(dplyr)
+
+anno <- read.csv("../annotate-and-filter/myanno.hg19_multianno.joined.csv")
+anno <- tbl_df(anno)
+anno
+```
+
+## Our first ggplot2 graph
+
+As seen above, in order to produce a ggplot2 graph we need a minimum of:-
+
+- Data to be used in graph
+- Mappings of data to the graph (aesthetic mapping)
+- What type of graph we want to use (The geom to use).
+
+In the code below we define the data as our cleaned patients data frame.
+
+```{r ggplot_only}
+pcPlot <- ggplot(data=anno)
+class(pcPlot)
+pcPlot$data[1:4,]
+```
+
+Now we can see that we have gg/ggplot object (pcPlot)  and in this the data has been defined.
+
+Important information on how to map the data to the visual properties (aesthetics) of the plot as well as what type of plot to use (geom) have however yet to specified. 
+
+```{r missing_rest}
+pcPlot$mapping
+pcPlot$theme
+pcPlot$layers
+```
+
+
+The information to map the data to the plot can be added now using the aes() function.
+```{r ggplot_aes}
+pcPlot <- ggplot(data=anno)
+
+pcPlot <- pcPlot+aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr)
+
+pcPlot$mapping
+pcPlot$theme
+pcPlot$layers
+```
+
+But we are still missing the final component of our plot, the type of plot to use (geom).
+
+Below the geom_point function is used to specify a point plot, a scatter plot of Height values on the x-axis versus Weight values on the y values.
+
+```{r ggplot_aes_geom}
+pcPlot <- ggplot(data=anno)
+
+pcPlot <- pcPlot+aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr)
+pcPlot <- pcPlot+geom_point()
+
+pcPlot$mapping
+pcPlot$theme
+pcPlot$layers
 
 ```
 
-## Plot construction
-- ggplot2 needs data as a data frame
-- It needs to be ***long*** format
+Now we have all the components of our plot, we need we can display the results.
+
+```{r ggplot_aes_geom_display}
+pcPlot
+
+```
+
+
+More typically, the data and aesthetics are defined within ggplot function and geoms applied afterwards.
+
+```{r ggplot_simple_geom_point}
+pcPlot <- ggplot(data=anno,
+                 mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))
+pcPlot+geom_point()
+```
+
+
+# Geoms - Plot types
+
+As we have seen, an important element of a ggplot is the geom used. Following the specification of data, the geom describes the type of plot used.
+
+Several geoms are available in ggplot2:-
+
+* geom_point() - Scatter plots
+* geom_line() - Line plots
+* geom_smooth() - Fitted line plots
+* geom_bar() - Bar plots
+* geom_boxplot() - Boxplots
+* geom_jitter() - Jitter to plots
+* geom_hist() - Histogram plots
+* geom_density() - Density plots
+* geom_text() - Text to plots
+* geom_errorbar() - Errorbars to plots
+* geom_violin() - Violin plots
+
+## Geoms - Line plots
+
+
+
+```{r, line_simple}
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))
+
+pcPlot_line <- pcPlot+geom_line() 
+
+pcPlot_line
+
+```
+
+```{r, smooth_simple}
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))
+
+pcPlot_smooth <- pcPlot+geom_smooth() 
+
+pcPlot_smooth
+
+```
+
+
+## Geoms - Bar and frequency plots
+
+```{r, bar_simple}
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=Func.refGene))
+
+pcPlot_bar <- pcPlot+geom_bar() 
+
+pcPlot_bar
+
+
+```
+
 
 ```{r}
-df <- data.frame(A = rnorm(5,3), B=rnorm(5,1))
-df
+pcPlot_bar + coord_flip() 
 ```
 
-The `tidyr` package is the last in a long line of packages (reshape, reshape2,..) that will manipulate data into a more covenient form for analysis. 
+
+```{r, histogram_simple}
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=X1000g2014oct_eur))
+
+pcPlot_hist <- pcPlot+geom_histogram() 
+
+pcPlot_hist
+
+```
+
+
+```{r, density_simple}
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=X1000g2014oct_eur))
+
+pcPlot_density <- pcPlot+geom_density() 
+
+pcPlot_density
+
+```
+
+
+## Geoms - Box and violin plots
+
+```{r, boxplot_simple}
+
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=Func.refGene,y=X1000g2014oct_eur))
+
+pcPlot_boxplot <- pcPlot+geom_boxplot() 
+
+pcPlot_boxplot
+```
+
+```{r, violin_simple}
+
+pcPlot <- ggplot(data=anno,
+        mapping=aes(x=Func.refGene,y=X1000g2014oct_eur))
+
+pcPlot_violin <- pcPlot+geom_violin() 
+
+pcPlot_violin
+```
+
+An overview of geoms and thier arguments can be found at ggplot2 documentation or within the ggplot2 cheatsheet.
+
+-[ggplot2 documentation](http://docs.ggplot2.org/current/)
+
+-[ggplot2 Cheatsheet](http://sape.inf.usi.ch/quick-reference/ggplot2/geom)
+
+# Aesthetics
+
+In order to change the property on an aesthetic of a plot into a constant value (e.g. set colour of all points to red) we can supply the colour argument to the geom_point() function.
+
+```{r, scatter_coloured}
+pcPlot <- ggplot(data=anno,
+                 mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))
+pcPlot+geom_point(colour="red")
+```
+
+
+As we discussed earlier however, ggplot2 makes use of aesthetic mappings to assign variables in the data to the properties/aesthetics of the plot. This allows the properties of the plot to reflect variables in the data dynamically.
+
+In these examples we supply additional information to the aes() function to define what information to display and how it is represented in the plot.
+
+First we can recreate the plot we saw earlier.
+
+```{r, scatter_simple}
+pcPlot <- ggplot(data=anno,
+                 mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))
+pcPlot+geom_point()
+```
+
+Now we can adjust the aes mapping by supplying an argument to the colour parameter in the aes function. (Note that ggplot2 accepts "color" or "colour" as parameter name)
+
+
+This simple adjustment allows for identifaction of the separation between male and female measurements for height and weight.
+
+```{r, scatter_aes_sexColour}
+pcPlot <- ggplot(data=anno,
+                 mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr,colour=GT.TUMOUR))
+pcPlot+geom_point()
+```
+
+Similarly the shape of points may be adjusted.
+
+```{r, scatter_aes_sexShape}
+pcPlot <- ggplot(data=anno,
+                 mapping=aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr,shape=GT.TUMOUR))
+pcPlot+geom_point()
+```
+
+The aesthetic mappings may be set directly in the `geom_point()` function as previously when specifying red. This can allow the same ggplot object to be used by different aesethetic mappings and varying geoms
+
+```{r, aes_in_geom}
+pcPlot <- ggplot(data=anno)
+pcPlot+geom_point(aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr,colour=GT.TUMOUR))
+pcPlot+geom_point(aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr,colour=GT.NORMAL))
+pcPlot+geom_point(aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr,colour=GT.TUMOUR,shape=GT.TUMOUR,size=DP))
+pcPlot+geom_violin(aes(x=is.na(GT.TUMOUR),y=X1000g2014oct_eur,fill=GT.TUMOUR))
+```
+
+
+Again, for a comprehensive list of parameters and aesthetic mappings used in geom_*type*  functions see the ggplot2 documentation for individual geoms by using ?geom_*type*
+
+```{r, helpforArguments}
+?geom_point
+```
+
+or visit the ggplot2 documentations pages and cheatsheet
+
+- [ggplot2 documentation](http://docs.ggplot2.org/current/)
+
+- [Cheatsheet](http://sape.inf.usi.ch/quick-reference/ggplot2/geom)
+
+
+# Facets
+
+One very useful feature of ggplot is faceting. 
+This allows you to produce plots subset by variables in your data.
+
+`ggplot2` is not compatible with the way that plots are constructed in *base* R, so we cannot use techniques like `mfrow=c(..)` and `mfrow=c(..)` to split our plotting window into different cells. Fortunately, facet provides a more-intuitive way of composing a plot based on the variables in the data.
+
+To facet our data into multiple plots we can use the *facet_wrap* or *facet_grid* function specifying the variable we split by.
+
+The *facet_grid* function is well suited to splitting the data by two factors.
+
+
+To split by one factor we can apply the facet_grid() function ommiting the variable before the "~"" to facet along columns in plot.
+
+<div align="center">
+facet_grid(~Columns)
+</div> 
+```{r, facet_grid_BySex}
+pcPlot <- ggplot(data=anno,aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))+geom_point()
+pcPlot + facet_grid(~GT.TUMOUR)
+```
+
+To split along rows in plot, the variable is placed before the "~.".
+
+<div align="center">
+facet_grid(Rows~.)
+</div> 
+
+```{r, facet_grid_SexBy}
+pcPlot <- ggplot(data=anno,aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))+geom_point()
+pcPlot + facet_grid(GT.TUMOUR~.)
+```
+
+The *facet_wrap()* function offers a less grid based structure but is well suited to faceting data by one variable.
+
+For *facet_wrap()* we follow as similar syntax to *facet_grid()*
+
+```{r, facet_Wrap_BySmokes}
+pcPlot <- ggplot(data=anno,aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))+geom_point()
+pcPlot + facet_wrap(~Chr)
+```
+
+A point to note here is that the order of the chromosomes is *alphabetical* rather than numeric. If we wanted a more natural order, we can *re-factor* the variable in the data frame to get the desired effect.
 
 ```{r}
-library(tidyr)
-df2 <- gather(df)
-df2
+anno <- mutate(anno, Chr=factor(Chr, levels=c(1:22, "X","Y")))
+```
 
+```{r, facet_Wrap_BySmokes2}
+pcPlot <- ggplot(data=anno,aes(x=X1000g2014oct_eur,y=X1000g2014oct_afr))+geom_point()
+pcPlot + facet_wrap(~Chr)
 ```
 
 
-## Plot construction
+******
+### Exercise
 
+- The number of variants observed on each Chromosome
 
+```{r echo=FALSE}
+ggplot(anno, aes(x=Chr)) + geom_bar()
+```
 
-```{r}
-ggplot(df2, aes(x = variable,y=value)) + geom_boxplot()
+- The distribution of 1000 genomes (european) frequencies for each chromosome
+
+```{r echo=FALSE}
+ggplot(anno, aes(x = Chr,y=X1000g2014oct_eur)) + geom_boxplot()
+```
+
+- The distribution of 1000 genomes (european) frequencies depending on whether the variant has a dbSNP ID or not
+
+```{r echo=FALSE}
+mutate(anno, IndbSNP = !is.na(snp129)) %>% 
+ggplot(aes(x = IndbSNP,y=X1000g2014oct_eur)) + geom_boxplot()
 ```
 
 
-## Plot construction
+- The numbers of exonic, intergenic and intronic (ONLY) variants for each chromosome
+    + You'll need to `filter` the data frame appropriately
 
-```{r fig.height=3}
-ggplot(df2, aes(x = variable,y=value,fill=variable)) + geom_boxplot()
+```{r echo=FALSE}
+filter(anno,Func.refGene %in% c("exonic", "intergenic","intronic","")) %>% 
+  ggplot(aes(x = Func.refGene)) + geom_bar() + facet_wrap(~Chr)  
 ```
 
-## Updating a plot
+- The depth observed at each variant (`DP`) along each chromosome
 
-- ggplot2 will easily re-drawn a plot as new variables are added
-    + a real advantage!
-```{r fig.height=3}
-df <- data.frame(A = rnorm(5,3), B=rnorm(5,1),C=rnorm(5,2))
-df2 <- melt(df)
-ggplot(df2, aes(x = variable,y=value,fill=variable)) + geom_boxplot()
+```{r echo=FALSE}
+ ggplot(anno, aes(x = Start, y= DP)) + geom_point() + facet_wrap(~Chr)
 ```
 
+******
 
-# ggplot2 Exercise
+In the last plot we started to look at our data on a genome-wide scale. 
 
-## Plotting the annotation table
-
-
+```{r echo=FALSE}
+path.to.bam <- "/media/dunnin01/Backup/summer-school/input"
+```
 
     
 ## Introducing ggbio
@@ -100,23 +464,85 @@ ggplot(df2, aes(x = variable,y=value,fill=variable)) + geom_boxplot()
 - It extends the ***Grammar of Graphics*** approach taken by `ggplot2`
 - It knows about the standard Bioconductor classes we have already introduced
 - Published in [Genome Biology](http://www.genomebiology.com/2012/13/8/R77)
-![ggbio](images/ggbio.png)
 
-## The autoplot function
+So the first stage is to transform our data into a `GenomicRanges` object
+```{r}
+library(GenomicAlignments)
+anno.gr <- GRanges(paste0("chr",anno$Chr), IRanges(anno$Start,anno$End))
+mcols(anno.gr) <- select(anno, -(Chr:End))
+anno.gr
+```
 
-- Guesses what type of plot you want from the data
-- Figures out the x and y coordinates
+`ggbio` has a convenient function called `autoplot` which will try and predict what visualisation we want from a particular data type.
+
+In this case, we can plot the coordinates of a set of variants. You should recognise from the distinctive grey colour scheme that `ggbio` is using `ggplot2` to create the plot.
+
+
+The `plotGrandLinear` function 
+
+```{r}
+library(ggbio)
+plotGrandLinear(anno.gr, aes(y = DP))
+```
+
+
+```{r}
+
+autoplot(anno.gr[1:10])
+```
+
+`ggbio` understands about *aesthetics* that we have just introduced for `ggplot2`
+
+```{r}
+autoplot(anno.gr[1:10],aes(color=GT.TUMOUR))
+```
+
+```{r}
+library(Homo.sapiens)
+data(genesymbol, package="biovizBase")
+
+
+wh <-genesymbol["WASH7P"]
+
+autoplot(Homo.sapiens,which=wh)
+```
+
+
+```{r}
+autoplot(Homo.sapiens,which=GRanges("chr1",ranges(anno.gr[1:10])))
+autoplot(Homo.sapiens,which=GRanges("chr1",ranges(anno.gr[1:10])),stat="reduce")
+
+```
+
+
+```{r}
+tracks(autoplot(Homo.sapiens,which=GRanges("chr1",ranges(anno.gr[1:10]))), 
+       autoplot(anno.gr[1:10]))
+```
+
+Adding an ideogram?
+
+```{r}
+ideo <- Ideogram(genome="hg19") + xlim(GRanges("chr1",ranges(anno.gr[1:10])))
+tracks(ideo,
+       autoplot(Homo.sapiens,which=GRanges("chr1",ranges(anno.gr[1:10]))), 
+       autoplot(anno.gr[1:10]))
+
+```
+
+
+
 ```{r message=FALSE}
 library(ggbio)
 library(GenomicAlignments)
-mygene <- GRanges("17", ranges=IRanges(7577851, 7598063))
-mygene.reads <- readGAlignments(file="../alignedReads/paired.bam",param=ScanBamParam(which=mygene),use.names = TRUE)
+wh <- GRanges("20",IRanges(1107967,1108280))
+reads <- readGAlignments(file="../working-with-vcfs/data/hapmap/NA12878.chr20.bam",param = ScanBamParam(which=wh),use.names = TRUE)
 ```
 
 ## Can choose a summary statistic
 
 ```{r message=FALSE}
-autoplot(mygene.reads,stat="coverage")
+autoplot(reads)
 ```
 
 ## Plotting gene structure
@@ -137,7 +563,7 @@ autoplot(txdb,which=exons[["7157"]])
 
 ```{r message=FALSE}
 tracks(autoplot(txdb,which=exons[["7157"]]),
-autoplot(mygene.reads,stat="coverage"))
+autoplot(reads,stat="coverage"))
 ```
 
 ## Different layouts available
