@@ -489,13 +489,12 @@ plotGrandLinear(anno.gr, aes(y = DP))
 We see the first variant is located in the gene "WASH7P". The `ggbio` package will allow us to visualise where this variant is located with respect to the gene. The `Homo.sapiens' package is 
 
 ```{r}
-library(Homo.sapiens)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 data(genesymbol, package="biovizBase")
+wh <- genesymbol["WASH7P"]
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
 
-
-wh <-genesymbol["WASH7P"]
-
-autoplot(Homo.sapiens,which=wh)
+autoplot(txdb,which=wh)
 ```
 
 `ggbio` can also plot a `GRanges` object. Which is not very impressive by itself.
@@ -507,37 +506,51 @@ autoplot(anno.gr[1],which=wh)
 However, we can combine plots using the `tracks` function
 
 ```{r}
-tracks(autoplot(Homo.sapiens,which=wh), 
-       autoplot(anno.gr[1])
-)
-        
-
-```
-
-Adding an ideogram?
-
-```{r}
-ideo <- Ideogram(genome="hg19")
-
-tracks(ideo,
-autoplot(Homo.sapiens,which=wh), 
-       autoplot(anno.gr,which=wh)
+tracks(autoplot(txdb,which=wh), 
+       autoplot(anno.gr[2])
 )
 
 ```
 
-```{r message=FALSE}
-library(ggbio)
-library(GenomicAlignments)
-wh <- GRanges("20",IRanges(1107967,1108280))
-reads <- readGAlignments(file="../working-with-vcfs/data/hapmap/NA12878.chr20.bam",param = ScanBamParam(which=wh),use.names = TRUE)
+`ggbio` is also able to plot the location of our sequencing reads. 
+
+```{r}
+seqlevelsStyle(wh) <- "Ensembl"
+wh <- keepSeqlevels(wh,"1")
+
+bam <- paste0(path.to.bam, "/HCC1143.mix1.n40t60.bam")
+#reads <- readGAlignments(file = bam, param=ScanBamParam(which=wh),use.names = TRUE)
+autoplot(bam, which=wh)
+```
+
+
+```{r}
+library(BSgenome.Hsapiens.UCSC.hg19)
+
+bg <- BSgenome.Hsapiens.UCSC.hg19
+
+autoplot(bam,bsgenome=bg, stat="mismatch",which=wh)
+```
+
+
+```{r}
+seqlevelsStyle(txdb) <- "Ensembl"
+tracks(Genes=autoplot(txdb,which=wh), 
+       Variant=autoplot(anno.gr[2]),
+       Mismatch=autoplot(bam,bsgenome=bg, stat="mismatch",which=wh)
+)
 ```
 
 ```{r}
-library(VariantAnnotation)
-vcf <- readVcf("../annotate-and-filter/HCC1143_vs_HCC1143_BL.flagged.muts.vcf","hg19")
-vr <- as(vcf,"VRanges")
+seqlevelsStyle(txdb) <- "Ensembl"
+tracks(Genes=autoplot(txdb,which=wh), 
+       Variant=autoplot(anno.gr[2]),
+       Mismatch=autoplot(bam,bsgenome=bg, stat="mismatch",which=wh),
+       heights=c(4,1,4)
+)
 ```
+
+The `Gviz` package was finer-control over the plotting of data as tracks.
 
 ```{r}
 library(Gviz)
@@ -553,31 +566,28 @@ grtrack <- GeneRegionTrack(txdb)
 
 plotTracks(list(itrack, gtrack, vars, grtrack),from=10000,to=20000,collapseTranscripts=TRUE,transcriptAnnotation="symbol")
 
-strack <- SequenceTrack(Hsapiens, chromosome = chr)
-plotTracks(list(itrack, gtrack, atrack, grtrack,
-strack), from = 10000, to = 20000, cex = 0.8,collapseTranscripts=TRUE)
-
+varpos <- start(anno.gr[2])
 
 ```
 
+```{r}
+reads <- readGAlignments(bam, use.names=TRUE,param=ScanBamParam(which = GRanges("1",IRanges(varpos-20, varpos+20)),what=c("cigar","mapq","seq","flag")))
+seqlevelsStyle(reads) <- "UCSC"
 
+altrack <- AlignmentsTrack(start=start(reads),end=end(reads),chromosome = seqnames(reads),cigar=mcols(reads)$cigar,genome="hg19")
 
-## Can choose a summary statistic
+strack <- SequenceTrack(Hsapiens, chromosome = "chr1")
+plotTracks(list(itrack, vars, altrack), from = varpos-20, to = varpos+20, cex = 0.8,collapseTranscripts=TRUE)
 
-```{r message=FALSE}
-autoplot(reads)
 ```
 
+```{r}
+ht <- HighlightTrack(trackList = list(altrack, strack), start=varpos-1,width=2,chromosome="chr1")
+```
 
+```{r}
+plotTracks(list(itrack,vars,ht,grtrack), from = varpos-20, to = varpos+20, cex = 0.8)
 
-## Karyogram
-
-Karyogram
-
-![kgram](images/gb-2012-13-8-r77-4.jpg)
-
-## Circular
-
-![circos](images/gb-2012-13-8-r77-5.jpg)
+```
 
 
