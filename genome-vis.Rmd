@@ -466,6 +466,7 @@ path.to.bam <- "/media/dunnin01/Backup/summer-school/input"
 - Published in [Genome Biology](http://www.genomebiology.com/2012/13/8/R77)
 
 So the first stage is to transform our data into a `GenomicRanges` object
+
 ```{r}
 library(GenomicAlignments)
 anno.gr <- GRanges(paste0("chr",anno$Chr), IRanges(anno$Start,anno$End))
@@ -478,7 +479,13 @@ anno.gr
 In this case, we can plot the coordinates of a set of variants. You should recognise from the distinctive grey colour scheme that `ggbio` is using `ggplot2` to create the plot.
 
 
-The `plotGrandLinear` function 
+```{r}
+library(ggbio)
+autoplot(anno.gr[1:10])
+```
+
+
+To visualise our results on a whole-genome scale, we can us the `plotGrandLinear` function. This function is intended to produce *"Manhattan plots"* commonly used to present whole-genome results (e.g. results from a GWAS study). We need to specify what is to be plotted on the y-axis. Typically this would be some form of significance, for example  -log(p-value). `ggbio` will figure out where all the points need to be plotted on the x-axis
 
 ```{r}
 library(ggbio)
@@ -486,9 +493,23 @@ library(ggbio)
 plotGrandLinear(anno.gr, aes(y = DP))
 ```
 
-We see the first variant is located in the gene "WASH7P". The `ggbio` package will allow us to visualise where this variant is located with respect to the gene. The `Homo.sapiens' package is 
+As `ggbio` is writen in the same style as `ggplot2`, we can set other aesthetics such as colour to be variable found in the `mcols` section of the object we are plotting
 
 ```{r}
+plotGrandLinear(anno.gr, aes(y = DP,col=GT.TUMOUR),legend = TRUE)
+```
+
+We can also introduce "facetting" into the mix:-
+
+```{r}
+plotGrandLinear(anno.gr, aes(y = DP,col=GT.TUMOUR),legend = TRUE) + facet_wrap(~GT.TUMOUR)
+```
+
+There are also a number of facilities available fo looking at individuals variants and genomic regions of interest.
+
+We see the first variant is located in the gene "WASH7P". The `ggbio` package will allow us to visualise where this variant is located with respect to the gene. Another type of object that `ggbio` can recognise is the `TxDb....` databases of gene models that we introduced previously. Here we also load a `genesymbol` object, which is a convenient way of getting ranges for genes based on symbol.
+
+```{r message=FALSE}
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 data(genesymbol, package="biovizBase")
 wh <- genesymbol["WASH7P"]
@@ -497,34 +518,36 @@ txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
 autoplot(txdb,which=wh)
 ```
 
-`ggbio` can also plot a `GRanges` object. Which is not very impressive by itself.
 
-```{r}
-autoplot(anno.gr[1],which=wh)
-```
+We can combine plots using the `tracks` function. This will automatically align features on the x-axis (genome) for us.
 
-However, we can combine plots using the `tracks` function
-
-```{r}
+```{r message=FALSE}
 tracks(autoplot(txdb,which=wh), 
        autoplot(anno.gr[2])
 )
 
 ```
 
-`ggbio` is also able to plot the location of our sequencing reads. 
+`ggbio` is also able to incorporate our aligned reads. We can point the `autoplot` function directly to the location of the bam file and it will generate coverage track automatically.
 
-```{r}
+```{r message=FALSE}
 seqlevelsStyle(wh) <- "Ensembl"
 wh <- keepSeqlevels(wh,"1")
 
 bam <- paste0(path.to.bam, "/HCC1143.mix1.n40t60.bam")
-#reads <- readGAlignments(file = bam, param=ScanBamParam(which=wh),use.names = TRUE)
+
 autoplot(bam, which=wh)
 ```
 
+If we want to visualise the actual reads themselves, we can first import them using the `readGAlignments` function and call the `autoplot` function on the resulting object.
 
-```{r}
+```{r message=FALSE}
+reads <- readGAlignments(bam, param=ScanBamParam(which=wh))
+autoplot(reads, which=wh)
+```
+
+
+```{r message=FALSE}
 library(BSgenome.Hsapiens.UCSC.hg19)
 
 bg <- BSgenome.Hsapiens.UCSC.hg19
@@ -533,7 +556,7 @@ autoplot(bam,bsgenome=bg, stat="mismatch",which=wh)
 ```
 
 
-```{r}
+```{r message=FALSE}
 seqlevelsStyle(txdb) <- "Ensembl"
 tracks(Genes=autoplot(txdb,which=wh), 
        Variant=autoplot(anno.gr[2]),
@@ -541,7 +564,7 @@ tracks(Genes=autoplot(txdb,which=wh),
 )
 ```
 
-```{r}
+```{r message=FALSE}
 seqlevelsStyle(txdb) <- "Ensembl"
 tracks(Genes=autoplot(txdb,which=wh), 
        Variant=autoplot(anno.gr[2]),
@@ -549,6 +572,31 @@ tracks(Genes=autoplot(txdb,which=wh),
        heights=c(4,1,4)
 )
 ```
+
+
+******
+### Exercise
+
+The *cansar* browser notes a deletion in the region `Chr1:152555707-152586541` for [HCC1143](https://cansar.icr.ac.uk/cansar/cell-lines/HCC1143/copy_number_variation/chromosome_1/)
+
+- Do we see this in our data? 
+```{r echo=FALSE,message=FALSE}
+wh <- GRanges("1", IRanges(152551500,152589096))
+bam <- paste0(path.to.bam, "/HCC1143.mix1.n40t60.bam")
+#reads <- readGAlignments(file = bam, param=ScanBamParam(which=wh),use.names = TRUE)
+autoplot(bam, which=wh)
+reads <- readGAlignments(bam, param=ScanBamParam(which=wh))
+seqlevelsStyle(txdb) <- "Ensembl"
+tracks(Reads=autoplot(reads),
+       Genes = autoplot(txdb, which=wh),
+       heights=c(4,1)
+)
+
+
+```
+
+
+******
 
 The `Gviz` package was finer-control over the plotting of data as tracks.
 
